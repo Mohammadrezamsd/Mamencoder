@@ -84,6 +84,7 @@ echo for %%%%a in ("*.mp4" "*.m4v") do (>>encoder.bat
   echo del stream_3.m3u8
 
   echo ren haji.m3u8 playlist.m3u8
+
   ) >>encoder.bat
 
  echo ) >>encoder.bat
@@ -130,19 +131,12 @@ exit
 SET /A timerand=%RANDOM% * 5 / 32768 + 1
 for /f %%i IN (handler.txt) do set /a c=%%i
 if %c% GEQ 3 (
-  timeout 1
+  timeout 5
   powershell write-host -fore Green "WAITING FOR CURRENT STACK TO FINISH"
   goto :pointer
 )
-else (
+  set directory_name=%~1
+  set file_name=%~2
   mkdir "%cd%\%~1"
-  move "%~2" "%cd%\%~1"
-  xcopy encoder.bat "%cd%\%~1"
-  xcopy temp.keyinfo "%cd%\%~1"
-  cd "%~1"
-  powershell write-host -fore Green "NEW VIDEO IS ADDING TO STACK"
-  powershell -command "$p = get-content ../handler.txt; $m = [int]$p; $m = $m + 1; set-content ../handler.txt $m"
-  start call encoder.bat
-  cd ..
-)
+  powershell -command "$d = $env:directory_name ; $f = $env:file_name ; $c = ' - ' + -join ((48..57) + (65..90) + (97..122) | get-random -Count 10 | %%%{[char]$_}) ; rename-item $d $d$c ; move-item $f $d$c ; copy-item encoder.bat $d$c ; copy-item temp.keyinfo $d$c ; cd $d$c ; $p = get-content ../handler.txt; $m = [int]$p; $m = $m + 1; set-content ../handler.txt $m ; start-process encoder.bat"
 exit /b 0
