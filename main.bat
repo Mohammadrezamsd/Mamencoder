@@ -35,14 +35,14 @@ set /a var = 0
 
 echo @echo off>>encoder.bat
 
-echo powershell -command "$p = get-content ../handler.txt; $m = [int]$p; $m = $m + 1; set-content ../handler.txt $m">>encoder.bat
-
 echo for %%%%a in ("*.mp4" "*.m4v") do (>>encoder.bat
 
   echo call:sslrand>>encoder.bat
 
   (
   echo ffmpeg -i "%%%%a" -hls_key_info_file temp.keyinfo -filter_complex "[v:0]split=4[vtemp001][vtemp002][vtemp003][vtemp004];[vtemp001]scale=w=640:h=360[vout001];[vtemp002]scale=w=960:h=540[vout002];[vtemp003]scale=w=1280:h=720[vout003];[vtemp004]scale=w=1920:h=1080[vout004]" -preset veryfast -crf 16 -r 24 -sc_threshold 0 -map [vout001] -c:v:0 libx264 -map [vout002] -c:v:1 libx264 -map [vout003] -c:v:2 libx264 -map [vout004] -c:v:3 libx264 -map a:0 -map a:0 -map a:0 -map a:0 -f hls -hls_time 10 -hls_playlist_type vod -master_pl_name playlist.m3u8 -hls_segment_filename stream_%%%%v/data%%%%06d.ts -var_stream_map "v:0,a:0 v:1,a:1 v:2,a:2 v:3,a:3" stream_%%%%v.m3u8
+
+  echo if exist ../handler.txt powershell -command "$p = get-content ../handler.txt; $m = [int]$p; $m = $m - 1; set-content ../handler.txt $m"
 
   echo powershell -command "(gc stream_0.m3u8) -replace 'stream_0/', '' | Out-File lq.m3u8 -encoding utf8"
   echo powershell -command "(gc lq.m3u8) -replace 'enc.key', '../enc.key' | Out-File lq.m3u8 -encoding utf8"
@@ -100,7 +100,6 @@ echo del temp.keyinfo>>encoder.bat
 (
 echo set /a var = %%var%% + 1
 )>>encoder.bat
-echo powershell -command "$p = get-content ../handler.txt; $m = [int]$p; $m = $m - 1; set-content ../handler.txt $m">>encoder.bat
 powershell -command "Add-Content encoder.bat 'del encoder.bat & exit'"
 
 
@@ -121,20 +120,18 @@ echo "%%~na"
 call:current_process "%%~na" "%%a"
 )
 del encoder.bat
-del temp.keyinfo
+powershell write-host -fore Green "RENDERING COMPLETED"
 del handler.txt
-echo %var%
-pause
+del temp.keyinfo
 exit
 
 :current_process
 :pointer
 SET /A timerand=%RANDOM% * 5 / 32768 + 1
-timeout %timerand%
 for /f %%i IN (handler.txt) do set /a c=%%i
 if %c% GEQ 3 (
-  sleep 1
-  powershell write-host -fore Green "waiting for queue"
+  timeout 1
+  powershell write-host -fore Green "WAITING FOR CURRENT STACK TO FINISH"
   goto :pointer
 )
 else (
@@ -143,6 +140,8 @@ else (
   xcopy encoder.bat "%cd%\%~1"
   xcopy temp.keyinfo "%cd%\%~1"
   cd "%~1"
+  powershell write-host -fore Green "NEW VIDEO IS ADDING TO STACK"
+  powershell -command "$p = get-content ../handler.txt; $m = [int]$p; $m = $m + 1; set-content ../handler.txt $m"
   start call encoder.bat
   cd ..
 )
