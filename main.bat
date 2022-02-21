@@ -29,7 +29,13 @@ endLocal
 timeout 5
 color 07
 
+powershell -command "set-content handler.txt '0'"
+
+set /a var = 0
+
 echo @echo off>>encoder.bat
+
+echo powershell -command "$p = get-content ../handler.txt; $m = [int]$p; $m = $m + 1; set-content ../handler.txt $m">>encoder.bat
 
 echo for %%%%a in ("*.mp4" "*.m4v") do (>>encoder.bat
 
@@ -83,19 +89,22 @@ echo for %%%%a in ("*.mp4" "*.m4v") do (>>encoder.bat
  echo ) >>encoder.bat
 
 (
-echo move *.mp4 ../done
-echo move *.m4v ../done
+echo move *.mp4 ../Completed
+echo move *.m4v ../Completed
 echo echo:
 echo echo:
 echo powershell write-host -fore Green Rendering Completed
 echo echo:
 )>>encoder.bat
 echo del temp.keyinfo>>encoder.bat
+(
+echo set /a var = %%var%% + 1
+)>>encoder.bat
+echo powershell -command "$p = get-content ../handler.txt; $m = [int]$p; $m = $m - 1; set-content ../handler.txt $m">>encoder.bat
 powershell -command "Add-Content encoder.bat 'del encoder.bat & exit'"
 
 
 echo :sslrand>>encoder.bat
-echo setlocal>>encoder.bat
 echo for /f "tokens=* USEBACKQ" %%%%f in (`openssl rand -out enc.key 16`) do (set var=%%%%f)>>encoder.bat
 (
 echo EXIT /B 0
@@ -104,23 +113,37 @@ echo EXIT /B 0
 echo enc.key>> temp.keyinfo
 echo enc.key>> temp.keyinfo
 
-mkdir done
+mkdir Completed
 
-for %%a in ("*.mp4" "*.m4v") do ( 
-mkdir "%cd%\%%~na"
-move "%%a" "%cd%\%%~na"
-xcopy encoder.bat "%cd%\%%~na"
-xcopy temp.keyinfo "%cd%\%%~na"
+for %%a in ("*.mp4" "*.m4v") do (
+
 echo "%%~na"
-cd "%%~na"
-start call encoder.bat
-cd ..
+call:current_process "%%~na" "%%a"
 )
-
 del encoder.bat
 del temp.keyinfo
+del handler.txt
+echo %var%
+pause
+exit
 
-
-
-
-
+:current_process
+:pointer
+SET /A timerand=%RANDOM% * 5 / 32768 + 1
+timeout %timerand%
+for /f %%i IN (handler.txt) do set /a c=%%i
+if %c% GEQ 3 (
+  sleep 1
+  powershell write-host -fore Green "waiting for queue"
+  goto :pointer
+)
+else (
+  mkdir "%cd%\%~1"
+  move "%~2" "%cd%\%~1"
+  xcopy encoder.bat "%cd%\%~1"
+  xcopy temp.keyinfo "%cd%\%~1"
+  cd "%~1"
+  start call encoder.bat
+  cd ..
+)
+exit /b 0
