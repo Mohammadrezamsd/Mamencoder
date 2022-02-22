@@ -26,8 +26,10 @@ call echo %%stars:~0,%SIZE%%%
 
 endLocal
 
-timeout 5
 color 07
+
+set /p course="Enter Course Directory Name: "
+set /p multiencode="Number of Simultaneous Encoding: "
 
 powershell -command "set-content handler.txt '0'"
 
@@ -94,13 +96,14 @@ echo move *.mp4 ../Completed
 echo move *.m4v ../Completed
 echo echo:
 echo echo:
-echo powershell write-host -fore Green Rendering Completed
+echo powershell write-host -fore Green RENDER COMPLETED
 echo echo:
 )>>encoder.bat
 echo del temp.keyinfo>>encoder.bat
 (
 echo set /a var = %%var%% + 1
 )>>encoder.bat
+echo powershell -executionpolicy remotesigned -File uploader.ps1>>encoder.bat
 powershell -command "Add-Content encoder.bat 'del encoder.bat & exit'"
 
 
@@ -109,6 +112,109 @@ echo for /f "tokens=* USEBACKQ" %%%%f in (`openssl rand -out enc.key 16`) do (se
 (
 echo EXIT /B 0
 )>>encoder.bat
+
+
+echo $directoryname = Split-Path -Path (Get-Location) -Leaf>>uploader.ps1
+echo $currentdirectory = get-location ^| foreach-object { $_.path }>>uploader.ps1
+echo $newFolder1 = "ftp://130.185.79.126/public_html/media/$env:course">>uploader.ps1
+echo $newFolder2 = "ftp://130.185.79.126/public_html/media/$env:course/$directoryname">>uploader.ps1
+echo $ftpuname = "*********">>uploader.ps1
+echo $ftppassword = "********">>uploader.ps1
+
+echo try>>uploader.ps1
+echo {>>uploader.ps1
+echo $makeDirectory = [System.Net.WebRequest]::Create($newFolder1);>>uploader.ps1
+echo $makeDirectory.Credentials = New-Object System.Net.NetworkCredential($ftpuname,$ftppassword);>>uploader.ps1
+echo $makeDirectory.Method = [System.Net.WebRequestMethods+FTP]::MakeDirectory;>>uploader.ps1
+echo $makeDirectory.GetResponse();>>uploader.ps1
+echo }catch [Net.WebException]>>uploader.ps1
+echo {>>uploader.ps1
+echo try {>>uploader.ps1
+
+echo #if there was an error returned, check if folder already existed on server>>uploader.ps1
+echo $checkDirectory = [System.Net.WebRequest]::Create($newFolder1);>>uploader.ps1
+echo $checkDirectory.Credentials = New-Object System.Net.NetworkCredential($ftpuname,$ftppassword);>>uploader.ps1
+echo $checkDirectory.Method = [System.Net.WebRequestMethods+FTP]::PrintWorkingDirectory;>>uploader.ps1
+echo $response = $checkDirectory.GetResponse();>>uploader.ps1
+echo }>>uploader.ps1
+echo catch [Net.WebException] {>>uploader.ps1			
+echo #if the folder didn't exist, then it's probably a file perms issue, incorrect credentials, dodgy server name etc>>uploader.ps1
+echo }>>uploader.ps1	
+echo }>>uploader.ps1
+
+echo try>>uploader.ps1
+echo {>>uploader.ps1
+echo $makeDirectory = [System.Net.WebRequest]::Create($newFolder2);>>uploader.ps1
+echo $makeDirectory.Credentials = New-Object System.Net.NetworkCredential($ftpuname,$ftppassword);>>uploader.ps1
+echo $makeDirectory.Method = [System.Net.WebRequestMethods+FTP]::MakeDirectory;>>uploader.ps1
+echo $makeDirectory.GetResponse();>>uploader.ps1
+echo }catch [Net.WebException]>>uploader.ps1
+echo {>>uploader.ps1
+echo try {>>uploader.ps1
+
+echo #if there was an error returned, check if folder already existed on server>>uploader.ps1
+echo $checkDirectory = [System.Net.WebRequest]::Create($newFolder2);>>uploader.ps1
+echo $checkDirectory.Credentials = New-Object System.Net.NetworkCredential($ftpuname,$ftppassword);>>uploader.ps1
+echo $checkDirectory.Method = [System.Net.WebRequestMethods+FTP]::PrintWorkingDirectory;>>uploader.ps1
+echo $response = $checkDirectory.GetResponse();>>uploader.ps1
+echo }>>uploader.ps1
+echo catch [Net.WebException] {>>uploader.ps1			
+echo #if the folder didn't exist, then it's probably a file perms issue, incorrect credentials, dodgy server name etc>>uploader.ps1
+echo }>>uploader.ps1	
+echo }>>uploader.ps1
+
+echo $FTPHost = "ftp://130.185.79.126/public_html/media/$env:course/$directoryname">>uploader.ps1
+ 
+echo $uploaderFolder = "$currentdirectory">>uploader.ps1
+  
+echo $webclient = New-Object System.Net.WebClient>>uploader.ps1
+echo $webclient.Credentials = New-Object System.Net.NetworkCredential($ftpuname,$ftppassword)>>uploader.ps1 
+ 
+echo $SrcEntries = Get-ChildItem $uploaderFolder -Recurse>>uploader.ps1
+
+echo $Srcfolders = $SrcEntries ^| Where-Object{$_.PSIsContainer}>>uploader.ps1
+echo $SrcFiles = $SrcEntries ^| Where-Object{!$_.PSIsContainer}>>uploader.ps1
+
+echo foreach($folder in $Srcfolders)>>uploader.ps1
+echo {>>uploader.ps1
+echo $SrcFolderPath = $uploaderFolder  -replace "\\","\\" -replace "\:","\:"  >>uploader.ps1 
+echo $DesFolder = $folder.Fullname -replace $SrcFolderPath,$FTPHost>>uploader.ps1
+echo $DesFolder = $DesFolder -replace "\\", "/">>uploader.ps1
+ 
+echo try>>uploader.ps1
+echo {>>uploader.ps1
+echo $makeDirectory = [System.Net.WebRequest]::Create($DesFolder);>>uploader.ps1
+echo $makeDirectory.Credentials = New-Object System.Net.NetworkCredential($ftpuname,$ftppassword);>>uploader.ps1
+echo $makeDirectory.Method = [System.Net.WebRequestMethods+FTP]::MakeDirectory;>>uploader.ps1
+echo $makeDirectory.GetResponse();>>uploader.ps1
+echo }>>uploader.ps1
+echo catch [Net.WebException]>>uploader.ps1
+echo {>>uploader.ps1
+echo try {>>uploader.ps1
+echo $checkDirectory = [System.Net.WebRequest]::Create($DesFolder);>>uploader.ps1
+echo $checkDirectory.Credentials = New-Object System.Net.NetworkCredential($ftpuname,$ftppassword);>>uploader.ps1
+echo $checkDirectory.Method = [System.Net.WebRequestMethods+FTP]::PrintWorkingDirectory;>>uploader.ps1
+echo $response = $checkDirectory.GetResponse();>>uploader.ps1
+echo }>>uploader.ps1
+echo catch [Net.WebException] { }>>uploader.ps1
+echo }>>uploader.ps1
+echo }>>uploader.ps1
+
+echo foreach($entry in $SrcFiles)>>uploader.ps1
+echo {>>uploader.ps1
+echo $SrcFullname = $entry.fullname>>uploader.ps1
+echo $SrcName = $entry.Name>>uploader.ps1
+echo write-output $SrcFullName>>uploader.ps1
+echo if($SrcName -ne "encoder.bat" -And $SrcName -ne "uploader.ps1"){>>uploader.ps1
+echo $SrcFilePath = $uploaderFolder -replace "\\","\\" -replace "\:","\:">>uploader.ps1
+echo $DesFile = $SrcFullname -replace $SrcFilePath,$FTPHost>>uploader.ps1
+echo $DesFile = $DesFile -replace "\\", "/">>uploader.ps1
+echo $uri = New-Object System.Uri($DesFile)>>uploader.ps1
+echo $webclient.uploadFile($uri, $SrcFullname)>>uploader.ps1
+echo }>>uploader.ps1
+echo }>>uploader.ps1
+echo powershell write-host -fore Green "UPLOAD COMPLETED">>uploader.ps1
+echo pause>>uploader.ps1
 
 echo enc.key>> temp.keyinfo
 echo enc.key>> temp.keyinfo
@@ -121,22 +227,24 @@ echo "%%~na"
 call:current_process "%%~na" "%%a"
 )
 del encoder.bat
-powershell write-host -fore Green "RENDERING COMPLETED"
+powershell write-host -fore Green "ENCODE COMPLETED"
 del handler.txt
 del temp.keyinfo
+del uploader.ps1
 exit
 
 :current_process
 :pointer
 SET /A timerand=%RANDOM% * 5 / 32768 + 1
 for /f %%i IN (handler.txt) do set /a c=%%i
-if %c% GEQ 3 (
+if %c% GEQ %multiencode% (
   timeout 5
   powershell write-host -fore Green "WAITING FOR CURRENT STACK TO FINISH"
   goto :pointer
 )
+  set folder=uploaderbax
   set directory_name=%~1
   set file_name=%~2
   mkdir "%cd%\%~1"
-  powershell -command "$d = $env:directory_name ; $f = $env:file_name ; $c = ' - ' + -join ((48..57) + (65..90) + (97..122) | get-random -Count 10 | %%%{[char]$_}) ; rename-item $d $d$c ; move-item $f $d$c ; copy-item encoder.bat $d$c ; copy-item temp.keyinfo $d$c ; cd $d$c ; $p = get-content ../handler.txt; $m = [int]$p; $m = $m + 1; set-content ../handler.txt $m ; start-process encoder.bat"
+  powershell -command "$d = $env:directory_name ; $f = $env:file_name ; $c = ' - ' + -join ((48..57) + (65..90) + (97..122) | get-random -Count 10 | %%%{[char]$_}) ; rename-item $d $d$c ; move-item $f $d$c ; copy-item encoder.bat $d$c ; copy-item uploader.ps1 $d$c ; copy-item temp.keyinfo $d$c ; cd $d$c ; $p = get-content ../handler.txt; $m = [int]$p; $m = $m + 1; set-content ../handler.txt $m ; start-process encoder.bat"
 exit /b 0
