@@ -5,7 +5,7 @@ set "STR=WELCOME TO HAJI ENCODER^!"
 set "SIZE=80"
 set "STR2=BY MOHAMMADREZA AND EGHBAL"
 set "SIZE=50"
-set "STR3=VERSION 1.3"
+set "STR3=VERSION 2.7"
 set "SIZE=50"
 
 set "LEN=0"
@@ -23,13 +23,12 @@ call echo %%spaces:~0,%pref_len%%%%%STR%%%%spaces:~0,%suf_len%%%
 call echo %%spaces:~0,%pref_len%%%%%STR2%%%%spaces:~0,%suf_len%%%
 call echo %%spaces:~0,%pref_len%%%%%STR3%%%%spaces:~0,%suf_len%%%
 call echo %%stars:~0,%SIZE%%%
-
 endLocal
 
 color 07
 
-set /p course="Enter Course Directory Name: "
-set /p multiencode="Number of Simultaneous Encoding: "
+set /p upload="Do You Want to Upload the Files? [y/n] "
+if /i "%upload%" equ "y" set /p course="Enter Course Directory Name: "
 
 powershell -command "set-content handler.txt '0'"
 
@@ -103,7 +102,8 @@ echo del temp.keyinfo>>encoder.bat
 (
 echo set /a var = %%var%% + 1
 )>>encoder.bat
-echo powershell -executionpolicy remotesigned -File uploader.ps1>>encoder.bat
+echo powershell if($env:upload -eq 'y') { powershell -executionpolicy remotesigned -File uploader.ps1 }>>encoder.bat
+echo if /i "%upload%" equ "n" del uploader.ps1>>encoder.bat
 powershell -command "Add-Content encoder.bat 'del encoder.bat & exit'"
 
 
@@ -214,6 +214,8 @@ echo $webclient.uploadFile($uri, $SrcFullname)>>uploader.ps1
 echo }>>uploader.ps1
 echo }>>uploader.ps1
 echo powershell write-host -fore Green "UPLOAD COMPLETED">>uploader.ps1
+echo del uploader.ps1>>uploader.ps1
+echo del encoder.bat>>uploader.ps1
 echo pause>>uploader.ps1
 
 echo enc.key>> temp.keyinfo
@@ -236,9 +238,9 @@ exit
 :current_process
 :pointer
 SET /A timerand=%RANDOM% * 5 / 32768 + 1
-for /f %%i IN (handler.txt) do set /a c=%%i
-if %c% GEQ %multiencode% (
-  timeout 5
+for /f "skip=1" %%p in ('wmic cpu get loadpercentage') do set /a usage=%%p
+if %usage% geq 95 (
+  timeout 10
   powershell write-host -fore Green "WAITING FOR CURRENT STACK TO FINISH"
   goto :pointer
 )
